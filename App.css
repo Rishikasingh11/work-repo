@@ -1,0 +1,246 @@
+/* src/App.css */
+body {
+  font-family: Arial, Helvetica, sans-serif; /* Common sans-serif */
+  font-size: 12px; /* General base font size from image */
+  background-color: #EBEBEB; /* Light gray page background */
+  margin: 0;
+  padding: 0;
+  color: #333;
+}
+
+.app-wrapper {
+  /* Max width or specific layout constraints if needed */
+}
+
+.top-bar-text {
+  background-color: #f8f9fa; /* Very light gray, almost white */
+  color: #6c757d; /* Muted text color */
+  padding: 2px 15px;
+  font-size: 0.8em;
+  text-align: left;
+  border-bottom: 1px solid #dee2e6;
+}
+
+/* --- Navbar Styling --- */
+.sg-navbar {
+  background-color: #F0F0F0 !important; /* Light greyish */
+  padding-top: 4px !important;
+  padding-bottom: 4px !important;
+  border-bottom: 1px solid #CCCCCC;
+}
+
+.sg-brand {
+  color: #E60028 !important; /* Societe Generale Red (approximate) */
+  font-weight: bold;
+  font-size: 1.3em !important;
+  padding-left: 10px;
+}
+
+.sg-nav-link {
+  color: #333333 !important;
+  font-size: 0.9em !important;
+  padding: 0.3rem 0.8rem !important;
+  margin-right: 5px;
+}
+
+.sg-nav-link.active,
+.sg-nav-link:hover {
+  color: #E60028 !important;
+  font-weight: bold;
+}
+.sg-nav-link.active {
+    border-bottom: 2px solid #E60028;
+}
+
+
+/* --- Status Bar Styling --- */
+.status-bar {
+  background-color: #E0E0E0 !important; /* Slightly darker gray than navbar */
+  color: #000000 !important;
+  border: 1px solid #C0C0C0 !important;
+  border-radius: 0 !important; /* Sharp corners */
+  padding: 0.3rem 0.8rem !important;
+  font-size: 0.85em;
+  margin-bottom: 5px !important;
+}
+
+/* --- Grid Container --- */
+.grid-outer-container {
+  /* border: 1px solid #B0B0B0; */ /* Optional border around the grid area */
+}
+
+
+/* --- AG Grid Custom Theme: ag-theme-sg-custom --- */
+.ag-theme-sg-custom {
+  /* Overall Font */
+  --ag-font-family: Arial, Helvetica, sans-serif;
+  --ag-font-size: 11.5px; /* Font size for grid content */
+
+  /* Header Styling */
+  --ag-header-height: auto; /* Allow auto height for wrapping */
+  --ag-header-background-color: #8C001A; /* Dark Red/Maroon for headers */
+  --ag-header-foreground-color: white;
+  --ag-header-cell-padding: 5px 8px; /* Top/bottom, Left/right padding */
+  --ag-header-cell-hover-background-color: #a8001f; /* Slightly lighter on hover */
+
+  /* Borders */
+  --ag-borders: solid 1px;
+  --ag-border-color: #D0D0D0; /* Main grid border and outer cell borders */
+  --ag-row-border-style: solid;
+  --ag-row-border-width: 1px;
+  --ag-row-border-color: #E0E0E0; /* Separator lines between rows */
+  --ag-cell-horizontal-border: solid 1px #E0E0E0; /* Vertical lines between cells */
+
+  /* Cell Styling */
+  --ag-cell-horizontal-padding: 8px;
+  --ag-row-hover-color: #f0f5ff; /* Light blue hover for rows */
+  --ag-background-color: white; /* Background of the grid itself */
+  --ag-data-color: #222; /* Text color in cells */
+
+  /* Pinned Rows (for Totals) */
+  --ag-pinned-row-background-color: #D3D3D3; /* Default, overridden by getRowStyle for specific total row */
+
+  /* Suppress Menu Button */
+  --ag-header-menu-button-display: none;
+}
+
+/* Ensure header text wraps */
+.ag-theme-sg-custom .ag-header-cell-label .ag-header-cell-text {
+  white-space: normal !important;
+  line-height: 1.2;
+  padding-top: 2px; /* Fine tune padding for wrapped text */
+  padding-bottom: 2px;
+  overflow: visible;
+  text-overflow: clip;
+}
+.ag-theme-sg-custom .ag-header-group-cell-label .ag-header-group-text {
+  white-space: normal !important;
+  line-height: 1.2;
+  overflow: visible;
+  text-overflow: clip;
+  font-weight: normal; /* Group headers don't look particularly bold in image */
+}
+
+/* Style for the 'Devise' column links */
+.ag-theme-sg-custom .devise-link {
+  color: #0000EE; /* Standard link blue */
+  text-decoration: underline;
+  cursor: pointer;
+}
+.ag-theme-sg-custom .devise-link:hover {
+  color: #00008B; /* Darker blue on hover */
+}
+/* .ag-theme-sg-custom .devise-cell {
+  background-color: #f7f7f7;
+} */
+
+
+/* Custom header group styling (if needed beyond theme vars) */
+.ag-theme-sg-custom .header-group-custom {
+  /* Specific styles for header groups if different from regular headers */
+}
+
+/* Adjust cell padding globally if defaultColDef doesn't cover it enough */
+.ag-theme-sg-custom .ag-cell {
+   padding-top: 3px;
+   padding-bottom: 3px;
+   line-height: normal; /* Let content determine height */
+   display: flex; /* For vertical alignment */
+   align-items: center; /* Vertically center content in cell */
+}
+.ag-theme-sg-custom .ag-cell.ag-right-aligned-cell { /* Ensure right aligned cells still center vertically */
+    justify-content: flex-end;
+}
+
+
+/* --- Footer Log Area --- */
+.footer-log {
+  background-color: #E0E0E0; /* Similar to status bar */
+  border-top: 1px solid #C0C0C0;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  font-size: 0.85em;
+}
+.footer-log h6 {
+  font-weight: bold;
+  margin-bottom: 4px;
+  font-size: 1.05em;
+}
+.log-entries-container {
+  max-height: 100px; /* Or adjust as needed */
+  overflow-y: auto;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace; /* Monospace for logs */
+  line-height: 1.4;
+  background-color: #FDFDFD;
+  padding: 5px;
+  border: 1px solid #C0C0C0;
+}
+.log-entry {
+  white-space: nowrap; /* Prevent log entries from wrapping */
+}
+
+
+  /* Wrap table data cell text */
+  .ag-cell {
+    white-space: normal !important;
+    word-break: break-word;
+    line-height: 1.3;
+    height: auto !important;
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+
+  /* Ensure pre-line for cells with line breaks */
+  .cell-pre-line {
+    white-space: pre-line !important;
+    word-break: break-word;
+  }
+
+
+.ag-header-cell-label {
+    white-space: normal !important;
+    line-height: 1.2 !important;
+    word-break: break-word;
+    text-align: left;
+    justify-content: flex-start;
+    align-items: flex-start;
+    height: auto;
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+  
+  .ag-header-cell {
+    height: auto !important;
+    min-height: 48px !important; /* Adjust as needed */
+  }
+
+  .justificatif-row {
+    background: #f7f7f7 !important;
+    font-style: italic;
+    color: #555;
+    font-size: 0.97em;
+    text-align: left !important;
+  }
+
+  /* Spanned row styling */
+  .spanned-row {
+    background: #e8f4fd !important;
+    border-top: 2px solid #007bff !important;
+    border-bottom: 2px solid #007bff !important;
+    min-height: 80px !important;
+    display: flex !important;
+    align-items: center !important;
+  }
+
+  .spanned-content {
+    padding: 12px 16px;
+    font-size: 0.95em;
+    line-height: 1.5;
+    color: #333;
+    width: 100%;
+  }
+
+  .spanned-content strong {
+    color: #007bff;
+    font-weight: 600;
+  }
