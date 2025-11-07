@@ -1,0 +1,685 @@
+// line 364
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { Container, Badge, Stack, Button, OverlayTrigger, Tooltip } from 'react-bootstrap';
+import OperationMatchesModel from './models/OperationMatchesModel';
+import {
+    ExclamationTriangleFill,
+    XOctagonFill
+} from 'react-bootstrap-icons';
+import 'bootstrap/dist/css/bootstrap.min.css';
+import './App.css';
+// --- AgGrid Imports ---
+import { AgGridReact } from 'ag-grid-react';
+import "ag-grid-community/styles/ag-grid.css";
+import "ag-grid-community/styles/ag-theme-alpine.css";
+import { ModuleRegistry } from 'ag-grid-community';
+import { 
+    ClientSideRowModelModule,
+    ColumnAutoSizeModule
+} from 'ag-grid-community';
+
+ModuleRegistry.registerModules([
+    ClientSideRowModelModule,
+    ColumnAutoSizeModule
+]);
+
+// Small inline "+" icon in a bordered square, matching your top "Saisir un écart" button
+const EcartIcon = ({ onClick }) => (
+  <OverlayTrigger
+    placement="top"
+    overlay={<Tooltip id="tooltip-ecart">Saisir un écart</Tooltip>}
+  >
+    <button
+      type="button"
+      className="btn btn-link p-0 ms-2 align-middle text-decoration-none"
+      aria-label="Saisir un écart"
+      onClick={(e) => {
+        e.stopPropagation(); // don't trigger row click/selection
+        onClick?.();
+      }}
+    >
+      <span
+        className="d-inline-flex align-items-center justify-content-center border border-2 border-danger rounded-1 bg-white"
+        style={{ width: 18, height: 18, lineHeight: 1 }}
+      >
+        <span className="text-danger fw-bold" style={{ fontSize: 12 }}>
+          +
+        </span>
+      </span>
+    </button>
+  </OverlayTrigger>
+);
+
+const gridOptions = {
+    enableCellSpan: true,
+}
+/**
+ * Main DealsTable component.
+ * Handles AgGrid setup, modals, and comment logic.
+ */
+const DealsTable = () => {
+    // --- Constants ---
+    const totalDeals = 28;
+    const orphansToComment = 6;
+
+    // --- State for deals data ---
+    const [dealsData, setDealsData] = useState([]);
+    const [loading, setLoading] = useState(true);
+    useEffect(() => {
+        setLoading(true);
+        fetch(process.env.PUBLIC_URL + '/dealsData.json')
+            .then((res) => res.json())
+            .then((data) => {
+                setDealsData(data);
+                setLoading(false);
+            })
+            .catch(() => setLoading(false));
+    }, []);
+
+
+    // --- State for ecart modal ---
+    const [showEcartModal, setShowEcartModal] = useState(false);
+    const [selectedRow, setSelectedRow] = useState(null);
+
+    // --- Modal Handlers ---
+   
+
+    // --- Ecart Modal Handlers ---
+    const handleAddEcart = (rowOrPair) => {
+        setSelectedRow(rowOrPair);
+        setShowEcartModal(true);
+    };
+
+    const handleCloseEcart = () => setShowEcartModal(false);
+    
+    const handleSubmitEcart = () => {
+        // handle submission logic later
+        console.log('Submitting ecart for row:', selectedRow);
+        setShowEcartModal(false);
+    };
+
+    /**
+     * Return deals data without comment or justification rows.
+     */
+    const expandedDealsData = useMemo(() => {
+        if (!dealsData || dealsData.length === 0) return [];
+        return dealsData;
+    }, [dealsData]);
+
+    /**
+     * AgGrid column definitions for main deal data only.
+     */
+    const columnDefs = useMemo(() => [
+        {
+            headerName: 'Type',
+            field: 'type',
+            rowSpan: (params) => (params.node.rowIndex % 2 === 0 ? 2 : 1),
+            // Bootstrap utilities for centering and spacing (no colors)
+            //cellClass: ['text-center', 'd-flex', 'align-items-center', 'justify-content-center', 'w-100', 'pt-3'],
+            // Keep class names for potential hooks, but no colors applied
+            cellClassRules: {
+                'cell-span-even': (params) => params.node.rowIndex % 4 < 2,
+                'cell-span-odd': (params) => params.node.rowIndex % 4 >= 2,
+            },
+            cellRenderer: (params) => {
+                // only render on the even row (your current rule)
+                if (params.node.rowIndex % 2 !== 0) return '';
+
+                const code = (params.data?.type || '').split(' ')[0] || '';
+
+                const handleClick = () => {
+                    // Prefer the visible 2-row block (adjacent rows). If not available, fall back to same reference.
+                    const currentRow = params.data;
+                    const idx = expandedDealsData.findIndex(d => d && d.id === currentRow.id);
+                    let pair = [];
+                    if (idx !== -1) {
+                        pair = idx % 2 === 0 ? [expandedDealsData[idx], expandedDealsData[idx + 1]] : [expandedDealsData[idx - 1], expandedDealsData[idx]];
+                    }
+                    if (!pair[0] || !pair[1]) {
+                        const sameRefRows = expandedDealsData.filter(r => r && r.reference === currentRow.reference);
+                        if (sameRefRows.length >= 2) {
+                            pair = sameRefRows.slice(0, 2);
+                        } else if (!pair[0]) {
+                            pair = [currentRow];
+                        }
+                    }
+                    handleAddEcart(pair.filter(Boolean));
+                };
+
+                return (
+                    <div style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center', 
+                        width: '100%', 
+                        height: '100%',
+                        paddingTop: '13px'
+                    }}>
+                        <span style={{ marginRight: '8px' }}>{code}</span>
+                        <EcartIcon onClick={handleClick} />
+                    </div>
+                );
+            },
+            maxWidth: 100,
+            sortable: false,
+          },
+        {
+            headerName: 'Office',
+            field: 'office',
+            minWidth: 100,
+            flex: 1,
+            valueGetter: (p) => p.data?.office ?? (p.node.rowIndex % 2 === 0 ? 'B' : 'F'),
+        },
+        {
+            headerName: 'Reference',
+            field: 'reference',
+            minWidth: 100,
+            flex: 1,
+            cellClass: 'cell-pre-line',
+        },
+        {
+            headerName: 'Contrepartie',
+            field: 'contrepartie',
+            minWidth: 100,
+            flex: 1,
+        },
+        {
+            headerName: 'Date de Valeur',
+            field: 'dateValeur',
+            minWidth: 100,
+            flex: 1,
+        },
+        {
+            headerName: 'Montant Achat',
+            field: 'montantAchat',
+            cellClass: 'cell-text-right',
+            minWidth: 100,
+            flex: 1,
+          },
+        {
+            headerName: 'Montant Vendu',
+            field: 'montantVendu',
+            cellClass: 'cell-text-right',
+            minWidth: 100,
+            flex: 1,
+        },
+        {
+            headerName: 'Cours client',
+            field: 'coursClient',
+            cellClass: 'cell-text-right',
+            minWidth: 100,
+            flex: 1,
+        },
+        {
+            headerName: 'Montant de base Achat',
+            field: 'montantBaseAchat',
+            cellClass: 'cell-text-right',
+            minWidth: 100,
+            flex: 1,
+        },
+        {
+            headerName: 'Montant de base Vendu',
+            field: 'montantBaseVendu',
+            cellClass: 'cell-text-right',
+            minWidth: 100,
+            flex: 1,
+        },
+        {
+            headerName: 'Cours base',
+            field: 'coursBase',
+            cellClass: 'cell-text-right',
+            minWidth: 100,
+            flex: 1,
+        },
+        {
+            headerName: 'Etat et Date d\'import',
+            field: 'etatDateImport',
+            cellClass: 'cell-pre-line',
+            minWidth: 100,
+            flex: 1,
+        },
+        {
+            headerName: 'Actions',
+            field: 'id',
+            minWidth: 100,
+            flex: 1,
+            cellClass: 'action-cell',
+            // span Actions exactly like Type: one icon per 2-row block
+            rowSpan: (p) => (p.node.rowIndex % 2 === 0 ? 2 : 1),
+            cellRenderer: (p) => {
+                if (p.node.rowIndex % 2 !== 0) return '';
+                // Mirror Type column vertical positioning so the icon sits between the two rows
+                    return (
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center', width: '100%', height: '100%', paddingTop: 18 }}>
+                            <Button
+                                variant="link"
+                                className="p-0"
+                            onClick={() => { window.confirm('Voulez-vous supprimer le matching de ces 2 deals ?'); }}
+                                title="Suppression de l'orphelin"
+                                aria-label="Suppression de l'orphelin"
+                            >
+                            <XOctagonFill className="text-danger" size={16} />
+                            </Button>
+                        </div>
+                    );
+            },
+            sortable: false,
+            filter: false,
+        }
+    ], []);
+
+    // --- AgGrid Default Column Definition ---
+    const defaultColDef = useMemo(() => ({
+        sortable: false,
+        filter: false,
+        resizable: true,
+        suppressSizeToFit: false,
+        autoSize: true,
+        wrapHeaderText: true,
+        autoHeaderHeight: true,
+        headerClass: 'text-wrap text-break text-start justify-content-start align-items-start fw-bold'
+    }), []);
+
+    const autoGroupColumnDef = useMemo(() => ({
+        minWidth: 100,
+        flex: 1,
+        suppressSizeToFit: false
+    }), []);
+
+    // --- AgGrid context for cell renderers ---
+    const gridContext = useMemo(() => ({}), []);
+
+    const gridRef = useRef();
+
+    // --- Render ---
+    return (
+        <Container fluid className="mt-3">
+            {/* Toolbar and legend */}
+            <Stack direction="horizontal" gap={3} className="mb-2 pb-2 border-bottom align-items-center justify-content-between flex-wrap">
+                <div className="d-flex align-items-center gap-2 mb-1 mb-md-0"><ExclamationTriangleFill color="orange" /> <span>Nombre d'orphelins restants à commenter : <Badge bg="danger">{orphansToComment}</Badge></span></div>
+                <div className="d-flex align-items-center gap-3 flex-wrap justify-content-center justify-content-md-end">
+                    <Button variant="link" className="text-decoration-none text-secondary p-0 d-flex align-items-center gap-1">
+                        <span className="d-inline-flex align-items-center justify-content-center border border-2 border-danger rounded-1 bg-white me-1" style={{ width: 18, height: 18, lineHeight: 1 }}>
+                            <span className="text-danger fw-bold" style={{ fontSize: 12 }}>+</span>
+                        </span>
+                        <span>Saisir un écart</span>
+                    </Button>
+                    <Button variant="link" className="text-decoration-none text-secondary p-0 d-flex align-items-center gap-1">
+                        <span className="d-inline-flex align-items-center justify-content-center border border-2 border-warning rounded-1 bg-white me-1" style={{ width: 18, height: 18, lineHeight: 1 }}>
+                            <span className="text-warning fw-bold" style={{ fontSize: 12 }}>✓</span>
+                        </span>
+                        <span>Modifier un écart</span>
+                    </Button>
+                    <Button variant="link" className="text-decoration-none text-secondary p-0 d-flex align-items-center gap-1">
+                        <XOctagonFill className="text-danger" />
+                        <span>Suppression de l'orphelin</span>
+                    </Button>
+                </div>
+            </Stack>
+
+            {/* Info Line */}
+            <p className="text-muted mb-2">Nombre de deals: {totalDeals}</p>
+
+            {/* AgGrid Table */}
+            {loading ? (
+                <div className="text-center my-5">Chargement des données...</div>
+            ) : (
+            <div className="operation-matches ag-theme-alpine grid-container" style={{ width: '100%', height: '600px' }}>
+                <AgGridReact
+                    ref={gridRef}
+                    rowData={expandedDealsData}
+                    columnDefs={columnDefs}
+                    defaultColDef={defaultColDef}
+                    autoGroupColumnDef={autoGroupColumnDef}
+                    pagination={true}
+                    paginationPageSize={10}
+                    enableBrowserTooltips={true}
+                    rowSelection="single"
+                    context={gridContext}
+                    rowHeight={50}
+                    theme={'legacy'}
+                    gridOptions={gridOptions}
+                    suppressHorizontalScroll={true}
+                    suppressColumnVirtualisation={true}
+                    suppressRowVirtualisation={true}
+                />
+            </div>
+            )}
+
+
+
+            {/* Ecart Modal */}
+            <OperationMatchesModel
+                show={showEcartModal}
+                onHide={handleCloseEcart}
+                pairData={selectedRow}
+                onSubmit={handleSubmitEcart}
+            />
+        </Container>
+    );
+};
+
+export default DealsTable;
+
+
+
+modal-----------------------------------------------------  
+
+
+import React, { useState, useMemo } from 'react';
+import { Modal, Button, Form, Row, Col } from 'react-bootstrap';
+import { AgGridReact } from 'ag-grid-react';
+import "ag-grid-community/styles/ag-grid.css";
+import "ag-grid-community/styles/ag-theme-alpine.css";
+import { ModuleRegistry } from 'ag-grid-community';
+import { ClientSideRowModelModule, ColumnAutoSizeModule } from 'ag-grid-community';
+
+ModuleRegistry.registerModules([
+    ClientSideRowModelModule,
+    ColumnAutoSizeModule,
+]);
+
+const OperationMatchesModel = ({ show, onHide, pairData, onSubmit }) => {
+    const [justificatif, setJustificatif] = useState('[Sélectionner un justificatif]');
+    const [commentaire, setCommentaire] = useState('');
+    const [rowEdits, setRowEdits] = useState({});
+
+    const justificatifOptions = [
+        '[Sélectionner un justificatif]',
+        'deal présent en FO mais absent en BO',
+        'deal présent en BO mais absent en FO',
+        'erreur de sens',
+        'marge négative',
+        'erreur de cours',
+        'divers',
+        'tickets FO saisi sans marge',
+        'orphelin FO non justifié',
+        'écart de montants entre FO et BO',
+        'CAT avec spot de couverture à une patte nulle',
+        'matching manuel sans écart',
+        'rompu sur ordre groupé',
+        'insert/delete pour insérer les données clients',
+    ];
+
+    // Build 4-row structure based on the passed pair (B,F), duplicating each with an editable copy under it
+    const topGridRows = useMemo(() => {
+        if (!pairData || pairData.length === 0) return [];
+        const bData = pairData[0];
+        const fData = pairData[1];
+        return [
+            bData ? { ...bData, id: 'row1', isControlRow: false } : { id: 'row1', isControlRow: false },
+            bData ? { ...bData, id: 'row2', isControlRow: false, isEditable: true } : { id: 'row2', isControlRow: false, isEditable: true },
+            fData ? { ...fData, id: 'row3', isControlRow: false } : { id: 'row3', isControlRow: false },
+            fData ? { ...fData, id: 'row4', isControlRow: false, isEditable: true } : { id: 'row4', isControlRow: false, isEditable: true },
+        ];
+    }, [pairData]);
+
+
+    const topGridColumnDefs = useMemo(() => [
+        {
+            headerName: 'Office',
+            field: 'office',
+            minWidth: 80,
+            flex: 1,
+            cellRenderer: (params) => {
+                if (params.data.isControlRow) return null;
+                const value = params.data.office ?? params.value ?? '';
+                return <span>{value}</span>;
+            }
+        },
+        {
+            headerName: '',
+            field: 'radioButtons',
+            minWidth: 60,
+            flex: 0.3,
+            cellRenderer: (params) => {
+                if (params.data.isControlRow) return null;
+                
+                // Show radio button for all rows (1, 2, 3, 4)
+                const radioNumber = params.node.rowIndex + 1;
+                
+                return (
+                    <div className="d-flex align-items-center justify-content-center w-100 h-100">
+                        <div 
+                            className="d-flex align-items-center justify-content-center rounded-circle border border-2 border-primary bg-white text-primary fw-bold"
+                            style={{ width: '24px', height: '24px', fontSize: '12px' }}
+                        >
+                            {radioNumber}
+                        </div>
+                    </div>
+                );
+            },
+        },
+        {
+            headerName: 'Type',
+            field: 'type',
+            minWidth: 70,
+            flex: 1,
+            cellRenderer: (params) => {
+                if (params.data.isControlRow) return null;
+                const parts = (params.data.type || '').split(' ');
+                return <span>{parts[0] || ''}</span>;
+            },
+        },
+        { headerName: 'Reference', field: 'reference', minWidth: 120, flex: 1, cellRenderer: (params) => params.data.isControlRow ? null : <span>{params.value}</span> },
+        { headerName: 'Contrepartie', field: 'contrepartie', minWidth: 120, flex: 1, cellRenderer: (params) => {
+            if (params.data.isControlRow) return null;
+            if (!params.data.isEditable) return <span>{params.value}</span>;
+            const val = rowEdits[params.data.id]?.contrepartie ?? '0';
+            return (
+                <Form.Control type="text" size="sm" className="w-100" value={val}
+                    onChange={(e) => setRowEdits(prev => ({ ...prev, [params.data.id]: { ...(prev[params.data.id]||{}), contrepartie: e.target.value } }))} />
+            );
+        } },
+        { headerName: 'Date de Valeur', field: 'dateValeur', minWidth: 120, flex: 1, cellRenderer: (params) => {
+            if (params.data.isControlRow) return null;
+            if (!params.data.isEditable) return <span>{params.value}</span>;
+            const val = rowEdits[params.data.id]?.dateValeur ?? '0';
+            return (
+                <Form.Control type="text" size="sm" className="w-100" value={val}
+                    onChange={(e) => setRowEdits(prev => ({ ...prev, [params.data.id]: { ...(prev[params.data.id]||{}), dateValeur: e.target.value } }))} />
+            );
+        } },
+        { headerName: 'Montant Achat', field: 'montantAchat', minWidth: 120, flex: 1, cellRenderer: (params) => {
+            if (params.data.isControlRow) return null;
+            if (!params.data.isEditable) return <span>{params.value}</span>;
+            const val = rowEdits[params.data.id]?.montantAchat ?? '0';
+            return (
+                <Form.Control type="text" size="sm" className="w-100" value={val}
+                    onChange={(e) => setRowEdits(prev => ({ ...prev, [params.data.id]: { ...(prev[params.data.id]||{}), montantAchat: e.target.value } }))} />
+            );
+        } },
+        {
+            headerName: 'Montant Vendu',
+            field: 'montantVendu',
+            minWidth: 180,
+            flex: 1,
+            cellRenderer: (params) => {
+                if (params.data.isControlRow) return null;
+                if (!params.data.isEditable) {
+                    return (
+                        <span
+                            style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block', width: '100%' }}
+                            title={params.value}
+                        >
+                            {params.value}
+                        </span>
+                    );
+                }
+                const val = rowEdits[params.data.id]?.montantVendu ?? '0';
+                return (
+                    <Form.Control type="text" size="sm" className="w-100" value={val}
+                        onChange={(e) => setRowEdits(prev => ({ ...prev, [params.data.id]: { ...(prev[params.data.id]||{}), montantVendu: e.target.value } }))} />
+                );
+            },
+        },
+        { headerName: 'Cours client', field: 'coursClient', minWidth: 120, flex: 1, cellRenderer: (params) => {
+            if (params.data.isControlRow) return null;
+            if (!params.data.isEditable) return <span>{params.value}</span>;
+            const val = rowEdits[params.data.id]?.coursClient ?? '0';
+            return (
+                <Form.Control type="text" size="sm" className="w-100" value={val}
+                    onChange={(e) => setRowEdits(prev => ({ ...prev, [params.data.id]: { ...(prev[params.data.id]||{}), coursClient: e.target.value } }))} />
+            );
+        } },
+        { headerName: 'Montant de base Achat', field: 'montantBaseAchat', minWidth: 120, flex: 1, cellRenderer: (params) => {
+            if (params.data.isControlRow) return null;
+            if (!params.data.isEditable) return <span>{params.value}</span>;
+            const val = rowEdits[params.data.id]?.montantBaseAchat ?? '0';
+            return (
+                <Form.Control type="text" size="sm" className="w-100" value={val}
+                    onChange={(e) => setRowEdits(prev => ({ ...prev, [params.data.id]: { ...(prev[params.data.id]||{}), montantBaseAchat: e.target.value } }))} />
+            );
+        } },
+        { headerName: 'Montant de base Vendu', field: 'montantBaseVendu', minWidth: 120, flex: 1, cellRenderer: (params) => {
+            if (params.data.isControlRow) return null;
+            if (!params.data.isEditable) return <span>{params.value}</span>;
+            const val = rowEdits[params.data.id]?.montantBaseVendu ?? '0';
+            return (
+                <Form.Control type="text" size="sm" className="w-100" value={val}
+                    onChange={(e) => setRowEdits(prev => ({ ...prev, [params.data.id]: { ...(prev[params.data.id]||{}), montantBaseVendu: e.target.value } }))} />
+            );
+        } },
+        { headerName: 'Cours base', field: 'coursBase', minWidth: 120, flex: 1, cellRenderer: (params) => {
+            if (params.data.isControlRow) return null;
+            if (!params.data.isEditable) return <span>{params.value}</span>;
+            const val = rowEdits[params.data.id]?.coursBase ?? '0';
+            return (
+                <Form.Control type="text" size="sm" className="w-100" value={val}
+                    onChange={(e) => setRowEdits(prev => ({ ...prev, [params.data.id]: { ...(prev[params.data.id]||{}), coursBase: e.target.value } }))} />
+            );
+        } },
+        { headerName: "Date d'import", field: 'etatDateImport', minWidth: 120, flex: 1, cellRenderer: (params) => params.data.isControlRow ? null : <span>{params.value}</span> },
+    ], [rowEdits]);
+
+
+    return (
+        <Modal show={show} onHide={onHide} centered size="xl">
+            <Modal.Header closeButton>
+                <Modal.Title>Paramétrage de l'écart</Modal.Title>
+            </Modal.Header>
+            <Modal.Body>
+                {/* Top Grid */}
+                <div className="ag-theme-alpine" style={{ width: '100%', height: '250px', marginBottom: '16px' }}>
+                    <AgGridReact
+                        rowData={topGridRows}
+                        columnDefs={topGridColumnDefs}
+                        defaultColDef={{ 
+                            resizable: true, 
+                            flex: 1,
+                            wrapHeaderText: true,
+                            autoHeaderHeight: true,
+                            headerClass: 'text-wrap text-break text-start justify-content-start align-items-start fw-bold'
+                        }}
+                        headerHeight={40}
+                        rowHeight={40}
+                        suppressMovableColumns={true}
+                        suppressMenuHide={true}
+                        suppressCellFocus={true}
+                        theme={'legacy'}
+                        enableCellTextSelection={true}
+                        suppressHorizontalScroll={true}
+                        suppressColumnVirtualisation={true}
+                        suppressRowVirtualisation={true}
+                    />
+                </div>
+
+                {/* Justification and Comment Section */}
+                <div className="bg-light p-3 rounded border">
+                    <Row className="mb-3">
+                        <Col md={4}>
+                            <Form.Label className="fw-bold mb-1">Justificatif :</Form.Label>
+                            <Form.Select
+                                value={justificatif}
+                                onChange={(e) => setJustificatif(e.target.value)}
+                            >
+                                {justificatifOptions.map(opt => (
+                                    <option key={opt} value={opt}>{opt}</option>
+                                ))}
+                            </Form.Select>
+                        </Col>
+                        <Col md={8}>
+                            <Form.Label className="fw-bold mb-1">Commentaire :</Form.Label>
+                            <Form.Control
+                                as="textarea"
+                                rows={3}
+                                placeholder="Commentaire"
+                                value={commentaire}
+                                onChange={(e) => setCommentaire(e.target.value)}
+                                style={{ resize: 'vertical' }}
+                            />
+                            <div className="text-muted small mt-1">
+                                {255 - commentaire.length} restant(s)
+                            </div>
+                        </Col>
+                    </Row>
+                </div>
+            </Modal.Body>
+            <Modal.Footer>
+                <Button variant="secondary" onClick={onHide}>
+                    Annuler
+                </Button>
+                <Button variant="primary" onClick={onSubmit}>
+                    Sauvegarder
+                </Button>
+            </Modal.Footer>
+        </Modal>
+    );
+};
+
+export default OperationMatchesModel;
+
+
+css------------------------------------only some which is also replacein laptop of OOO
+
+/* src/App.css */
+body {
+  font-family: Arial, Helvetica, sans-serif; /* Common sans-serif */
+  font-size: 12px; /* General base font size from image */
+  background-color: #EBEBEB; /* Light gray page background */
+  margin: 0;
+  padding: 0;
+  color: #333;
+}
+
+  /* Wrap table data cell text */
+  .ag-cell {
+    white-space: normal !important;
+    word-break: break-word;
+    line-height: 1.3;
+    height: auto !important;
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+
+  /* Ensure pre-line for cells with line breaks */
+  .cell-pre-line {
+    white-space: pre-line !important;
+    word-break: break-word;
+  }
+
+
+
+
+  
+ json
+------------------------------
+[
+  { "id": "3715012", "type": "TT B A", "office": "B", "reference": "3715012", "contrepartie": "70923456", "dateValeur": "30 Sep 2024", "montantAchat": "60,000.00 GBP N", "montantVendu": "69,000.00 EUR", "coursClient": "1.15", "montantBaseAchat": "60,000.00", "montantBaseVendu": "69,000.00", "coursBase": "1.1500", "etatDateImport": "30/09/24\n0 - \n[1915012]" },
+  { "id": "3715013", "type": "CC F A", "office": "F", "reference": "3715013", "contrepartie": "70934567", "dateValeur": "01 Oct 2024", "montantAchat": "12,000.00 EUR", "montantVendu": "12,960.00 USD", "coursClient": "1.08", "montantBaseAchat": "12,000.00", "montantBaseVendu": "12,960.00", "coursBase": "1.0800", "etatDateImport": "01/10/24\n0 - \n[1915013]" },
+  { "id": "3715014", "type": "TT B C", "office": "B", "reference": "3715014", "contrepartie": "70945678", "dateValeur": "01 Oct 2024", "montantAchat": "40,000.00 GBP N", "montantVendu": "46,000.00 EUR", "coursClient": "1.15", "montantBaseAchat": "40,000.00", "montantBaseVendu": "46,000.00", "coursBase": "1.1500", "etatDateImport": "01/10/24\n0 - \n[1915014]" },
+  { "id": "3715015", "type": "GC F M", "office": "F", "reference": "3715015", "contrepartie": "70956789", "dateValeur": "01 Oct 2024", "montantAchat": "95,000.00 CHF", "montantVendu": "99,750.00 EUR", "coursClient": "1.05", "montantBaseAchat": "95,000.00", "montantBaseVendu": "99,750.00", "coursBase": "1.0500", "etatDateImport": "01/10/24\n0 - \n[1915015]" },
+  { "id": "3715016", "type": "SW B A", "office": "B", "reference": "3715016", "contrepartie": "70967890", "dateValeur": "01 Oct 2024", "montantAchat": "180,000.00 EUR", "montantVendu": "190,800.00 USD", "coursClient": "1.06", "montantBaseAchat": "180,000.00", "montantBaseVendu": "190,800.00", "coursBase": "1.0600", "etatDateImport": "01/10/24\n0 - \n[1915016]" },
+  { "id": "3715017", "type": "TF F C", "office": "F", "reference": "3715017", "contrepartie": "70978901", "dateValeur": "01 Oct 2024", "montantAchat": "22,000.00 EUR", "montantVendu": "24,200.00 USD", "coursClient": "1.10", "montantBaseAchat": "22,000.00", "montantBaseVendu": "24,200.00", "coursBase": "1.1000", "etatDateImport": "01/10/24\n0 - \n[1915017]" },
+  { "id": "3715018", "type": "CC B M", "office": "B", "reference": "3715018", "contrepartie": "70989012", "dateValeur": "01 Oct 2024", "montantAchat": "7,250.00 EUR", "montantVendu": "7,540.00 USD", "coursClient": "1.04", "montantBaseAchat": "7,250.00", "montantBaseVendu": "7,540.00", "coursBase": "1.0400", "etatDateImport": "01/10/24\n0 - \n[1915018]" },
+  { "id": "3715019", "type": "TT F A", "office": "F", "reference": "3715019", "contrepartie": "70990123", "dateValeur": "01 Oct 2024", "montantAchat": "55,000.00 GBP N", "montantVendu": "63,250.00 EUR", "coursClient": "1.15", "montantBaseAchat": "55,000.00", "montantBaseVendu": "63,250.00", "coursBase": "1.1500", "etatDateImport": "01/10/24\n0 - \n[1915019]" },
+  { "id": "3715020", "type": "GC B A", "office": "B", "reference": "3715020", "contrepartie": "71001234", "dateValeur": "01 Oct 2024", "montantAchat": "130,000.00 CHF", "montantVendu": "136,500.00 EUR", "coursClient": "1.05", "montantBaseAchat": "130,000.00", "montantBaseVendu": "136,500.00", "coursBase": "1.0500", "etatDateImport": "01/10/24\n0 - \n[1915020]" },
+  { "id": "3715021", "type": "SW F M", "office": "F", "reference": "3715021", "contrepartie": "71012345", "dateValeur": "01 Oct 2024", "montantAchat": "210,000.00 EUR", "montantVendu": "222,600.00 USD", "coursClient": "1.06", "montantBaseAchat": "210,000.00", "montantBaseVendu": "222,600.00", "coursBase": "1.0600", "etatDateImport": "01/10/24\n0 - \n[1915021]" },
+  { "id": "3715022", "type": "TF B A", "office": "B", "reference": "3715022", "contrepartie": "71023456", "dateValeur": "01 Oct 2024", "montantAchat": "18,000.00 EUR", "montantVendu": "19,800.00 USD", "coursClient": "1.10", "montantBaseAchat": "18,000.00", "montantBaseVendu": "19,800.00", "coursBase": "1.1000", "etatDateImport": "01/10/24\n0 - \n[1915022]" },
+  { "id": "3715023", "type": "CC F A", "office": "F", "reference": "3715023", "contrepartie": "71034567", "dateValeur": "01 Oct 2024", "montantAchat": "10,500.00 EUR", "montantVendu": "11,025.00 USD", "coursClient": "1.05", "montantBaseAchat": "10,500.00", "montantBaseVendu": "11,025.00", "coursBase": "1.0500", "etatDateImport": "01/10/24\n0 - \n[1915023]" },
+  { "id": "3715024", "type": "TT B M", "office": "B", "reference": "3715024", "contrepartie": "71045678", "dateValeur": "01 Oct 2024", "montantAchat": "32,000.00 GBP N", "montantVendu": "36,800.00 EUR", "coursClient": "1.15", "montantBaseAchat": "32,000.00", "montantBaseVendu": "36,800.00", "coursBase": "1.1500", "etatDateImport": "01/10/24\n0 - \n[1915024]" },
+  { "id": "3715025", "type": "GC F A", "office": "F", "reference": "3715025", "contrepartie": "71056789", "dateValeur": "01 Oct 2024", "montantAchat": "85,000.00 CHF", "montantVendu": "89,250.00 EUR", "coursClient": "1.05", "montantBaseAchat": "85,000.00", "montantBaseVendu": "89,250.00", "coursBase": "1.0500", "etatDateImport": "01/10/24\n0 - \n[1915025]" },
+  { "id": "3715026", "type": "SW B C", "office": "B", "reference": "3715026", "contrepartie": "71067890", "dateValeur": "01 Oct 2024", "montantAchat": "175,000.00 EUR", "montantVendu": "185,500.00 USD", "coursClient": "1.06", "montantBaseAchat": "175,000.00", "montantBaseVendu": "185,500.00", "coursBase": "1.0600", "etatDateImport": "01/10/24\n0 - \n[1915026]" },
+  { "id": "3715027", "type": "TF F M", "office": "F", "reference": "3715027", "contrepartie": "71078901", "dateValeur": "01 Oct 2024", "montantAchat": "20,000.00 EUR", "montantVendu": "22,000.00 USD", "coursClient": "1.10", "montantBaseAchat": "20,000.00", "montantBaseVendu": "22,000.00", "coursBase": "1.1000", "etatDateImport": "01/10/24\n0 - \n[1915027]" },
+  { "id": "3715028", "type": "CC B A", "office": "B", "reference": "3715028", "contrepartie": "71089012", "dateValeur": "01 Oct 2024", "montantAchat": "6,400.00 EUR", "montantVendu": "6,720.00 USD", "coursClient": "1.05", "montantBaseAchat": "6,400.00", "montantBaseVendu": "6,720.00", "coursBase": "1.0500", "etatDateImport": "01/10/24\n0 - \n[1915028]" }
+] 
