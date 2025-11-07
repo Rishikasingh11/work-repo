@@ -1,0 +1,158 @@
+import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
+import 'bootstrap/dist/css/bootstrap.min.css';
+import { Container } from 'react-bootstrap';
+import { AgGridReact } from 'ag-grid-react';
+import "ag-grid-community/styles/ag-grid.css";
+import "ag-grid-community/styles/ag-theme-alpine.css";
+import { ModuleRegistry } from 'ag-grid-community';
+import { ClientSideRowModelModule, ColumnAutoSizeModule } from 'ag-grid-community';
+import { Badge } from 'react-bootstrap';
+
+ModuleRegistry.registerModules([
+    ClientSideRowModelModule,
+    ColumnAutoSizeModule,
+]);
+
+const HistoriqueDesActions = () => {
+    const [rows, setRows] = useState([]);
+    const gridRef = useRef();
+
+    useEffect(() => {
+        fetch(process.env.PUBLIC_URL + '/HistoriqueDesActions.json')
+            .then(r => r.json())
+            .then(data => setRows(Array.isArray(data) ? data : []))
+            .catch(() => setRows([]));
+    }, []);
+
+    const formatDate = (isoString) => {
+        if (!isoString) return '';
+        const d = new Date(isoString);
+        return new Intl.DateTimeFormat('fr-FR', {
+            day: '2-digit', month: 'short', year: 'numeric',
+            hour: '2-digit', minute: '2-digit', second: '2-digit',
+            hour12: false
+        }).format(d).replace(',', '');
+    };
+
+    const defaultColDef = useMemo(() => ({
+        resizable: true,
+        sortable: true,
+        filter: true,
+        wrapHeaderText: true,
+        autoHeaderHeight: true
+    }), []);
+
+    const columnDefs = useMemo(() => ([
+        { headerName: 'ID Operation', field: 'idOperation', minWidth: 140 },
+        {
+            headerName: 'Action', field: 'action', minWidth: 180,
+            cellRenderer: (params) => params.value,
+            tooltipValueGetter: (p) => p.value
+        },
+        {
+            headerName: 'Commentaire', field: 'commentaire', flex: 1, minWidth: 320,
+            autoHeight: true,
+            wrapText: true,
+            cellClass: 'ag-cell-wrap-text',
+            cellRenderer: (params) => (
+                <div style={{ whiteSpace: 'normal', lineHeight: 1.25, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{params.value}</div>
+            ),
+            tooltipValueGetter: (p) => p.value
+        },
+        { headerName: 'Utilisateur', field: 'utilisateur', minWidth: 140 },
+        {
+            headerName: 'Date', field: 'date', minWidth: 200,
+            valueFormatter: (p) => formatDate(p.value),
+            filter: 'agDateColumnFilter',
+            filterParams: {
+                comparator: (f, v) => {
+                    const cell = new Date(v).setHours(0,0,0,0);
+                    const filt = f.getTime();
+                    if (cell === filt) return 0;
+                    return cell < filt ? -1 : 1;
+                }
+            }
+        },
+    ]), []);
+
+    const onGridReady = (params) => {
+        gridRef.current = params.api;
+        setTimeout(() => {
+            params.api.sizeColumnsToFit();
+        }, 0);
+        const onResize = () => params.api.sizeColumnsToFit();
+        window.addEventListener('resize', onResize);
+        // cleanup
+        params.api.addEventListener('gridDestroyed', () => {
+            window.removeEventListener('resize', onResize);
+        });
+    };
+
+    const onFirstDataRendered = (params) => {
+        params.api.sizeColumnsToFit();
+        params.api.resetRowHeights();
+    };
+    const onGridSizeChanged = (params) => {
+        params.api.sizeColumnsToFit();
+        params.api.resetRowHeights();
+    };
+
+    const onColumnResized = (params) => {
+        params.api.resetRowHeights();
+    };
+
+    const estimateRowHeight = useCallback((params) => {
+        const baseHeight = 44;
+        const comment = params.data?.commentaire;
+        if (!comment) return baseHeight;
+        const column = params.api.getColumn('commentaire');
+        const availableWidth = column ? Math.max(column.getActualWidth() - 16, 120) : 300;
+        const avgCharWidth = 7; // approximate px per character with current font size
+        const charsPerLine = Math.max(Math.floor(availableWidth / avgCharWidth), 1);
+        const lineCount = Math.ceil(comment.length / charsPerLine);
+        const lineHeight = 20; // px
+        return Math.max(baseHeight, lineCount * lineHeight + 12);
+    }, []);
+
+    return (
+        <div className="min-vh-100 bg-light">
+            <header className="bg-white border-bottom py-3 px-3 px-md-4">
+                <div className="mx-auto w-100" style={{ maxWidth: '1600px' }}>
+                    <h1 className="h5 mb-0">Historique des actions</h1>
+                    <p className="text-muted mb-0">Total: {rows.length} lignes</p>
+                </div>
+            </header>
+
+            <main className="py-4 px-3 px-md-4">
+                <div className="mx-auto w-100" style={{ maxWidth: '1600px' }}>
+                    <div className="ag-theme-alpine" style={{ height: 600, width: '100%' }}>
+                        <AgGridReact
+                            rowData={rows}
+                            columnDefs={columnDefs}
+                            defaultColDef={defaultColDef}
+                            theme={'legacy'}
+                            pagination={true}
+                            paginationPageSize={10}
+                            enableBrowserTooltips={true}
+                            tooltipShowDelay={0}
+                            rowSelection="single"
+                            suppressRowClickSelection={true}
+                            suppressRowVirtualisation={true}
+                            getRowHeight={estimateRowHeight}
+                            // let autoHeight rows grow as needed for wrapped comments
+                            onGridReady={onGridReady}
+                            onGridSizeChanged={onGridSizeChanged}
+                            onColumnResized={onColumnResized}
+                            onFirstDataRendered={onFirstDataRendered}
+                            onRowDataUpdated={(p) => p.api.resetRowHeights()}
+                            onDisplayedColumnsChanged={(p) => p.api.resetRowHeights()}
+                        />
+                    </div>
+                </div>
+            </main>
+        </div>
+    );
+};
+
+export default HistoriqueDesActions;
+
