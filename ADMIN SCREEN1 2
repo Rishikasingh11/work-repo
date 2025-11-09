@@ -156,3 +156,25 @@ const HistoriqueDesActions = () => {
 
 export default HistoriqueDesActions;
 
+
+[
+  { "idOperation": "1916959", "action": "INSERTION_SENS", "commentaire": "Le sens du deal est inversé C -> A", "utilisateur": "MEHAB001", "date": "2025-11-03T11:27:30" },
+  { "idOperation": "1916959", "action": "INSERTION_SENS", "commentaire": "Le sens du deal est inversé A -> C", "utilisateur": "MEHAB001", "date": "2025-11-03T11:27:23" },
+  { "idOperation": "1916959", "action": "INSERTION_SENS", "commentaire": "Le sens du deal est inversé A -> C.", "utilisateur": "MEHAB001", "date": "2025-11-03T11:27:13" },
+  { "idOperation": "1827565", "action": "SUPPRESSION", "commentaire": "test", "utilisateur": "MEHAB001", "date": "2025-11-03T09:04:43" },
+  { "idOperation": "1827627", "action": "MODIF_COMMENTAIRE", "commentaire": "from api 3", "utilisateur": "MEHAB001", "date": "2025-10-15T07:49:27" },
+  { "idOperation": "1827627", "action": "MODIF_COMMENTAIRE", "commentaire": "from api 3", "utilisateur": "MEHAB001", "date": "2025-10-15T07:49:06" },
+  { "idOperation": "1827565", "action": "ANNULE_SUPPRESSION", "commentaire": "test", "utilisateur": "MEHAB001", "date": "2025-09-12T12:35:43" },
+  { "idOperation": "1917149", "action": "AJOUT_COMMENTAIRE", "commentaire": "bbbh new comment 19 jun", "utilisateur": "BENGHA001", "date": "2025-06-19T10:52:13" },
+  { "idOperation": "1917146", "action": "MODIF_COMMENTAIRE", "commentaire": "bbbh new comment from old ui", "utilisateur": "BENGHA001", "date": "2025-06-19T10:51:06" },
+  { "idOperation": "1917149", "action": "MODIF_COMMENTAIRE", "commentaire": "bbbh new comment 19 jun", "utilisateur": "BENGHA001", "date": "2025-06-19T10:27:35" },
+
+  { "idOperation": "1907358", "action": "MODIF_COMMENTAIRE", "commentaire": "2024 09 18: reminder sent / 2024 09 19: return of BO, amount 681.03 will be spent at the end of the month on their usual process test 4 june 19 june", "utilisateur": "MEHAB001", "date": "2025-06-19T08:22:01" },
+  { "idOperation": "1827627", "action": "MODIF_COMMENTAIRE", "commentaire": "2024 06 20: QUITUS team advised \"Team is still busy with the Java upgrade and multiple vulnerabilities till Sept\" Email TS: Tuesday, 11 June, 2024 11:30 AM new test 4 june test 9 june test 18 june", "utilisateur": "MEHAB001", "date": "2025-06-18T01:25:15" },
+  { "idOperation": "1827565", "action": "MODIF_COMMENTAIRE", "commentaire": "from db 1", "utilisateur": "BENCHAO1", "date": "2025-06-18T01:19:32" },
+  { "idOperation": "1827565", "action": "MODIF_COMMENTAIRE", "commentaire": "bbhh new comment", "utilisateur": "MEHAB001", "date": "2025-06-18T01:09:24" },
+  { "idOperation": "1827627", "action": "MODIF_COMMENTAIRE", "commentaire": "2024 06 20: QUITUS team advised \"Team is still busy with the Java upgrade and multiple vulnerabilities till Sept\" Email TS: Tuesday, 11 June, 2024 11:30 – new AM test 4 june test 9 june", "utilisateur": "MEHAB001", "date": "2025-06-09T11:10:48" }
+]
+
+
+
