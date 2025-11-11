@@ -1,0 +1,126 @@
+[
+  { "id": 1, "libelle": "deal présent en FO mais absent en BO" },
+  { "id": 2, "libelle": "deal présent en BO mais absent en FO" },
+  { "id": 3, "libelle": "écart de montants entre FO et BO" },
+  { "id": 4, "libelle": "erreur de sens" },
+  { "id": 5, "libelle": "marge négative" },
+  { "id": 6, "libelle": "erreur de cours" },
+  { "id": 7, "libelle": "divers" },
+  { "id": 8, "libelle": "tickets FO saisi sans marge" },
+  { "id": 9, "libelle": "matching manuel sans écart" },
+  { "id": 10, "libelle": "rompu sur ordre groupé" },
+  { "id": 11, "libelle": "orphelin FO non justifié" },
+  { "id": 12, "libelle": "CAT avec spot de couverture à une patte nulle" },
+  { "id": 13, "libelle": "insert/delete pour insérer les données clients" },
+  { "id": 14, "libelle": "" },
+  { "id": 15, "libelle": "" }
+]
+
+
+
+
+
+
+
+
+
+
+
+
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import 'bootstrap/dist/css/bootstrap.min.css';
+import { Button, Container } from 'react-bootstrap';
+import { AgGridReact } from 'ag-grid-react';
+import "ag-grid-community/styles/ag-grid.css";
+import "ag-grid-community/styles/ag-theme-alpine.css";
+import { ModuleRegistry } from 'ag-grid-community';
+import { ClientSideRowModelModule, ColumnAutoSizeModule } from 'ag-grid-community';
+
+ModuleRegistry.registerModules([
+    ClientSideRowModelModule,
+    ColumnAutoSizeModule,
+]);
+
+const GestionDesJustificatifs = () => {
+    const [rows, setRows] = useState([]);
+    const gridRef = useRef();
+
+    useEffect(() => {
+        const filePath = process.env.PUBLIC_URL + '/' + encodeURIComponent('Gestion des justificatifs.json');
+        fetch(filePath)
+            .then(r => r.json())
+            .then(data => setRows(Array.isArray(data) ? data : []))
+            .catch(() => setRows([]));
+    }, []);
+
+    const defaultColDef = useMemo(() => ({
+        resizable: true,
+        sortable: false,
+        filter: false,
+        wrapHeaderText: true,
+        autoHeaderHeight: true
+    }), []);
+
+    const columnDefs = useMemo(() => ([
+        { headerName: 'ID', field: 'id', minWidth: 90, width: 100 },
+        { headerName: 'Libellé', field: 'libelle', flex: 1, minWidth: 300, wrapText: true, autoHeight: true },
+        {
+            headerName: '', field: 'action', width: 120, minWidth: 120,
+            cellRenderer: () => (
+                <Button variant="outline-secondary" size="sm">Editer</Button>
+            ),
+            suppressMenu: true
+        }
+    ]), []);
+
+    const onGridReady = (params) => {
+        gridRef.current = params.api;
+        setTimeout(() => params.api.sizeColumnsToFit(), 0);
+        const onResize = () => params.api.sizeColumnsToFit();
+        window.addEventListener('resize', onResize);
+        params.api.addEventListener('gridDestroyed', () => window.removeEventListener('resize', onResize));
+    };
+
+    const onFirstDataRendered = (params) => {
+        params.api.sizeColumnsToFit();
+        params.api.resetRowHeights();
+    };
+
+    const onColumnResized = (params) => {
+        params.api.resetRowHeights();
+    };
+
+    return (
+        <div className="min-vh-100 bg-light">
+            <header className="bg-white border-bottom py-3 px-3 px-md-4">
+                <div className="mx-auto w-100" style={{ maxWidth: '1600px' }}>
+                    <h1 className="h5 mb-2">Liste des justificatif</h1>
+                    <Button variant="outline-secondary" size="sm">Ajouter un justificatif…</Button>
+                </div>
+            </header>
+
+            <main className="py-4 px-3 px-md-4">
+                <div className="mx-auto w-100" style={{ maxWidth: '1600px' }}>
+                    <div className="ag-theme-alpine" style={{ height: 600, width: '100%' }}>
+                        <AgGridReact
+                            rowData={rows}
+                            columnDefs={columnDefs}
+                            defaultColDef={defaultColDef}
+                            theme={'legacy'}
+                            rowSelection="single"
+                            suppressRowClickSelection={true}
+                            enableBrowserTooltips={true}
+                            tooltipShowDelay={0}
+                            onGridReady={onGridReady}
+                            onFirstDataRendered={onFirstDataRendered}
+                            onColumnResized={onColumnResized}
+                        />
+                    </div>
+                </div>
+            </main>
+        </div>
+    );
+};
+
+export default GestionDesJustificatifs;
+
